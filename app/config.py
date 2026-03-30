@@ -1,0 +1,8 @@
+"""Configuration for the reading pipeline."""
+
+# Document chunking
+CHUNK_SIZE = 1024
+CHUNK_OVERLAP = 200
+
+# Node retrieval
+SIMILARITY_TOP_K = 5
