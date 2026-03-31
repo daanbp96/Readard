@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Optional, Sequence
+from typing import Optional, Sequence
 
 from llama_index.core.llms import LLM
 from llama_index.core import Settings, VectorStoreIndex
@@ -16,25 +16,25 @@ from config import SIMILARITY_TOP_K
 
 
 class ReadingSession:
+    """
+    Single-open-book session.
+
+    The intended proof-of-concept flow is:
+    load_book(...) -> set_position(...) -> ask(...) (repeat) until the caller closes the book.
+    """
 
     def __init__(self, llm: LLM):
         self.llm = llm
 
-        self.books: Dict[str, LoadedBook] = {}
-        self.indexes: Dict[str, VectorStoreIndex] = {}
-        self.positions: Dict[str, ResolvedPosition] = {}
-        self.nodes: Dict[str, Sequence[BaseNode]] = {}
-        self.active_book_id: Optional[str] = None
+        self.book: Optional[LoadedBook] = None
+        self.index: Optional[VectorStoreIndex] = None
+        self.nodes: Optional[Sequence[BaseNode]] = None
+        self.position: Optional[ResolvedPosition] = None
 
-
-    def load_book(self, book_path: Path, force_reindex: bool = False) -> str:
-
+    def load_book(self, book_path: Path, force_reindex: bool = False) -> None:
         book = load_book(book_path.parent)
 
-        book_id = book.book_path.stem.lower()
-
         persist_path = get_book_persist_path(book.book_path)
-
         transformations = build_default_transformations()
 
         index, nodes = get_or_create_index(
@@ -45,59 +45,35 @@ class ReadingSession:
             callback_manager=Settings.callback_manager,
         )
 
-        self.books[book_id] = book
-        self.indexes[book_id] = index
-
-        self.nodes[book_id] = nodes
-
-        self.active_book_id = book_id
-
-        return book_id
-
-
-    def open_book(self, book_id: str):
-
-        if book_id not in self.books:
-            raise ValueError(f"Book '{book_id}' not loaded.")
-
-        self.active_book_id = book_id
-
+        self.book = book
+        self.index = index
+        self.nodes = nodes
+        self.position = None
 
     def set_position(self, snippet: str) -> ResolvedPosition:
-
-        if self.active_book_id is None:
-            raise ValueError("No active book selected.")
-
-        book = self.books[self.active_book_id]
+        if self.book is None:
+            raise ValueError("No book loaded.")
 
         position = resolve_position_from_snippet(
-            book.full_book_text,
+            self.book.full_book_text,
             snippet,
         )
 
         if position is None:
             raise ValueError("Could not resolve reader position safely.")
 
-        self.positions[self.active_book_id] = position
-
+        self.position = position
         return position
-
 
     def ask(self, question: str) -> str:
         """Answer a question based on the book up to the current reader position."""
-        if self.active_book_id is None:
-            raise ValueError("No active book selected.")
-
-        if self.active_book_id not in self.positions:
-            raise ValueError("Reader position not set.")
-
-        index = self.indexes[self.active_book_id]
-        boundary = self.positions[self.active_book_id].end_char
+        if self.index is None or self.position is None:
+            raise ValueError("Book and reader position must be set before asking.")
 
         retrieved_nodes_with_scores = retrieve_allowed_nodes(
-            index=index,
+            index=self.index,
             question=question,
-            boundary=boundary,
+            boundary=self.position.end_char,
             similarity_top_k=SIMILARITY_TOP_K,
         )
         retrieved_nodes = [item.node for item in retrieved_nodes_with_scores]

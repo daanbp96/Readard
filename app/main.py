@@ -18,7 +18,7 @@ def main() -> None:
     llm = create_llm(model=OPENAI_MODEL, provider=LLM_PROVIDER)
     session = ReadingSession(llm=llm)
 
-    book_id = session.load_book(DATA_DIR / BOOK_NAME, force_reindex=False)
+    session.load_book(DATA_DIR / BOOK_NAME, force_reindex=False)
 
     session.set_position(LAST_READ_SENTENCE)
 
