@@ -1,39 +1,45 @@
-"""Query engine configuration and execution."""
 from typing import Sequence
 
-from llama_index.core import VectorStoreIndex
-from llama_index.core.base.base_query_engine import BaseQueryEngine
-from llama_index.core.response_synthesizers import get_response_synthesizer
+from llama_index.core.llms import LLM
+from llama_index.core.response_synthesizers import (
+    ResponseMode,
+    get_response_synthesizer,
+)
 from llama_index.core.schema import BaseNode
 
 
 # Engine configuration
-RESPONSE_MODE = "compact"
+RESPONSE_MODE = ResponseMode.COMPACT
 
 # Prompt configuration
-SYSTEM_PROMPT = "Answer the question based only on the provided context. If you cannot answer from the context, say so."
+SYSTEM_PROMPT = (
+    "You are a careful reading companion. Answer the question based only on the "
+    "provided context, which covers events up to the reader's current position in "
+    "the book. If the question requires knowledge of events that happen later in the "
+    "story, explicitly say that you cannot answer without revealing spoilers, and do "
+    "not reveal those spoilers."
+)
 
 INSTRUCTION_TEMPLATE = "{question}"
 
 
-def build_query_engine(index: VectorStoreIndex) -> BaseQueryEngine:
-    """Create a query engine with constrained answer behavior."""
-    return index.as_query_engine(
-        response_mode=RESPONSE_MODE
-    )
-
-
-def run_query(question: str, nodes: Sequence[BaseNode]) -> str:
+def run_query(question: str, nodes: Sequence[BaseNode], llm: LLM) -> str:
     """Execute a query against the provided nodes using synthesis.
 
     Args:
         question: The question to ask
         nodes: The boundary-filtered nodes to synthesize from
+        llm: Explicit LLM instance used for synthesis
 
     Returns:
         String response synthesized from the provided nodes
     """
-    synthesizer = get_response_synthesizer(response_mode=RESPONSE_MODE)
-    response = synthesizer.synthesize(question, nodes=nodes)
+    spoiler_aware_question = (
+        f"{SYSTEM_PROMPT}\n\nUser question (answer without future spoilers):\n"
+        f"{question}"
+    )
+
+    synthesizer = get_response_synthesizer(response_mode=RESPONSE_MODE, llm=llm)
+    response = synthesizer.synthesize(spoiler_aware_question, nodes=nodes)
     return str(response)
 

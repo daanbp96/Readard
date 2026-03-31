@@ -12,11 +12,6 @@ def retrieve_allowed_nodes(
     boundary: int,
     similarity_top_k: int = 5,
 ):
-    unfiltered_retriever = index.as_retriever(
-        similarity_top_k=similarity_top_k,
-    )
-    unfiltered_nodes = unfiltered_retriever.retrieve(question)
-
     filters = MetadataFilters(
         filters=[
             MetadataFilter(

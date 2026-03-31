@@ -1,28 +1,29 @@
 from pathlib import Path
 from typing import Dict, Optional, Sequence
 
+from llama_index.core.llms import LLM
 from llama_index.core import Settings, VectorStoreIndex
 from llama_index.core.schema import BaseNode
 
 from loaders import load_book, LoadedBook
-from settings import get_book_persist_path
+from environment import get_book_persist_path
 from transformations import build_default_transformations
 from index_functions import get_or_create_index
 from book_structure import resolve_position_from_snippet, ResolvedPosition
 from retrieval import retrieve_allowed_nodes
-from query import build_query_engine, run_query
+from query import run_query
 from config import SIMILARITY_TOP_K
 
 
 class ReadingSession:
 
-    def __init__(self):
+    def __init__(self, llm: LLM):
+        self.llm = llm
 
         self.books: Dict[str, LoadedBook] = {}
         self.indexes: Dict[str, VectorStoreIndex] = {}
         self.positions: Dict[str, ResolvedPosition] = {}
         self.nodes: Dict[str, Sequence[BaseNode]] = {}
-        self.query_engine = None
         self.active_book_id: Optional[str] = None
 
 
@@ -82,18 +83,6 @@ class ReadingSession:
         return position
 
 
-    def build_engine(self) -> None:
-        """Build query engine for the current index."""
-        if self.active_book_id is None:
-            raise ValueError("No active book selected.")
-
-        if self.active_book_id not in self.indexes:
-            raise RuntimeError("Index unavailable.")
-
-        index = self.indexes[self.active_book_id]
-        self.query_engine = build_query_engine(index)
-
-
     def ask(self, question: str) -> str:
         """Answer a question based on the book up to the current reader position."""
         if self.active_book_id is None:
@@ -102,20 +91,21 @@ class ReadingSession:
         if self.active_book_id not in self.positions:
             raise ValueError("Reader position not set.")
 
-        if self.query_engine is None:
-            raise RuntimeError("Query engine not built. Call build_engine() first.")
-
         index = self.indexes[self.active_book_id]
         boundary = self.positions[self.active_book_id].end_char
 
-        retrieved_nodes = retrieve_allowed_nodes(
+        retrieved_nodes_with_scores = retrieve_allowed_nodes(
             index=index,
             question=question,
             boundary=boundary,
             similarity_top_k=SIMILARITY_TOP_K,
         )
+        retrieved_nodes = [item.node for item in retrieved_nodes_with_scores]
 
         if not retrieved_nodes:
-            raise RuntimeError("No allowed nodes before reader position.")
+            return (
+                "I don’t yet know enough based on what you’ve read so far to answer "
+                "that without spoilers."
+            )
 
-        return run_query(self.query_engine, question)
+        return run_query(question, retrieved_nodes, llm=self.llm)
