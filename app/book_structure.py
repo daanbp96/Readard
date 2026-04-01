@@ -5,7 +5,7 @@ from typing import Optional
 
 @dataclass(frozen=True)
 class ResolvedPosition:
-    """Resolved reader position in the normalized full book text."""
+    """Resolved reader position in original full-book character coordinates."""
     snippet: str
     normalized_snippet: str
     start_char: int
@@ -31,33 +31,25 @@ def resolve_position_from_snippet(
     snippet: str,
 ) -> Optional[ResolvedPosition]:
     """
-    Resolve a reader's last-read snippet against the normalized full book text.
+    Resolve a reader snippet and return original-string character coordinates.
 
     Returns:
         ResolvedPosition if exactly one match is found.
         None if no match is found or if the match is ambiguous.
     """
-    normalized_book = normalize_text(full_book_text)
     normalized_snippet = normalize_text(snippet)
 
     if not normalized_snippet:
         return None
 
-    matches = []
-    start = 0
-
-    while True:
-        idx = normalized_book.find(normalized_snippet, start)
-        if idx == -1:
-            break
-        matches.append(idx)
-        start = idx + 1
+    token_pattern = _normalized_snippet_to_pattern(normalized_snippet)
+    matches = list(re.finditer(token_pattern, full_book_text, flags=re.IGNORECASE))
 
     if len(matches) != 1:
         return None
 
-    match_start = matches[0]
-    match_end = match_start + len(normalized_snippet)
+    match_start = matches[0].start()
+    match_end = matches[0].end()
 
     return ResolvedPosition(
         snippet=snippet,
@@ -65,3 +57,10 @@ def resolve_position_from_snippet(
         start_char=match_start,
         end_char=match_end,
     )
+
+
+def _normalized_snippet_to_pattern(normalized_snippet: str) -> str:
+    tokens = [re.escape(token) for token in normalized_snippet.split(" ") if token]
+    if not tokens:
+        return r"$a"  # impossible match
+    return r"\s+".join(tokens)

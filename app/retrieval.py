@@ -15,7 +15,7 @@ def retrieve_allowed_nodes(
     filters = MetadataFilters(
         filters=[
             MetadataFilter(
-                key="end_char_idx",
+                key="global_char_end",
                 value=boundary,
                 operator=FilterOperator.LTE,
             )

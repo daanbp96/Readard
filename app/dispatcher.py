@@ -5,14 +5,14 @@ from llama_index.core.llms import LLM
 from llama_index.core import Settings, VectorStoreIndex
 from llama_index.core.schema import BaseNode
 
-from loaders import load_book, LoadedBook
-from environment import get_book_persist_path
-from transformations import build_default_transformations
-from index_functions import get_or_create_index
-from book_structure import resolve_position_from_snippet, ResolvedPosition
-from retrieval import retrieve_allowed_nodes
-from query import run_query
-from config import SIMILARITY_TOP_K
+from .book_structure import ResolvedPosition, resolve_position_from_snippet
+from .config import SIMILARITY_TOP_K
+from .environment import get_book_persist_path
+from .index_functions import get_or_create_index
+from .loaders import LoadedBook, load_book
+from .query import run_query
+from .retrieval import retrieve_allowed_nodes
+from .transformations import build_default_transformations
 
 
 class ReadingSession:

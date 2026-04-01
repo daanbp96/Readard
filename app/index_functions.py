@@ -25,7 +25,9 @@ def get_or_create_index(
     """Load an existing index or create a new one from documents."""
 
     if _can_load_index(persist_path) and not force_reindex:
-        return _load_index_with_nodes(persist_path)
+        index, nodes = _load_index_with_nodes(persist_path)
+        if _nodes_have_global_char_metadata(nodes):
+            return index, nodes
 
     if documents is None:
         raise ValueError("Documents must be provided when creating a new index.")
@@ -107,11 +109,45 @@ def _run_ingestion_pipeline(
     pipeline = IngestionPipeline(transformations=transformations)
     nodes = pipeline.run(documents=list(documents))
 
-    for node in nodes:
-        if node.end_char_idx is not None:
-            node.metadata["end_char_idx"] = node.end_char_idx
+    doc_metadata_by_id = _build_doc_metadata_map(documents)
+
+    for chunk_seq_global, node in enumerate(nodes):
+        node.metadata["chunk_seq_global"] = chunk_seq_global
+
+        source_meta = doc_metadata_by_id.get(getattr(node, "ref_doc_id", ""), {})
+        for key in ("book_id", "book_version", "extraction_version", "spine_idx", "spine_href"):
+            if key in source_meta:
+                node.metadata.setdefault(key, source_meta[key])
+
+        node_start = getattr(node, "start_char_idx", None)
+        node_end = getattr(node, "end_char_idx", None)
+        doc_global_start = source_meta.get("global_char_start")
+        if isinstance(doc_global_start, int):
+            if isinstance(node_start, int):
+                node.metadata["global_char_start"] = doc_global_start + node_start
+            if isinstance(node_end, int):
+                node.metadata["global_char_end"] = doc_global_start + node_end
+
+        if isinstance(node_end, int):
+            node.metadata["end_char_idx"] = node_end
 
     return nodes
+
+
+def _build_doc_metadata_map(documents: Sequence[Document]) -> dict[str, dict]:
+    metadata_map: dict[str, dict] = {}
+    for doc in documents:
+        doc_id = getattr(doc, "id_", None)
+        if isinstance(doc_id, str):
+            metadata_map[doc_id] = dict(doc.metadata)
+    return metadata_map
+
+
+def _nodes_have_global_char_metadata(nodes: Sequence[BaseNode]) -> bool:
+    for node in nodes:
+        if node.metadata.get("global_char_end") is None:
+            return False
+    return True
 
 def _create_storage_context() -> StorageContext:
     """Create storage context backing the index."""

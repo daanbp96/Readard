@@ -7,6 +7,9 @@ CHUNK_OVERLAP = 200
 # Node retrieval
 SIMILARITY_TOP_K = 5
 
+# Extraction/versioning for deterministic offsets
+EXTRACTION_VERSION = "v1"
+
 # LLM configuration
 LLM_PROVIDER = "openai"
 OPENAI_MODEL = "gpt-3.5-turbo"

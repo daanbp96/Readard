@@ -1,10 +1,7 @@
-from dispatcher import ReadingSession
-from environment import (
-    DATA_DIR,
-    initialize_environment,
-)
-from config import LLM_PROVIDER, OPENAI_MODEL
-from llm_factory import create_llm
+from app.config import LLM_PROVIDER, OPENAI_MODEL
+from app.dispatcher import ReadingSession
+from app.environment import DATA_DIR, initialize_environment
+from app.llm_factory import create_llm
 
 
 BOOK_NAME = "Harry Potter and the Sorcerer's Stone.epub"
