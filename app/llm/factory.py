@@ -9,4 +9,3 @@ def create_llm(model: str, provider: str = "openai"):
         return OpenAI(model=model)
 
     raise ValueError(f"Unsupported LLM provider: {provider}")
-

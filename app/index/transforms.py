@@ -1,7 +1,7 @@
 from llama_index.core import Settings
 from llama_index.core.node_parser import SentenceSplitter
 
-from config import CHUNK_SIZE, CHUNK_OVERLAP
+from ..config import CHUNK_OVERLAP, CHUNK_SIZE
 
 
 def build_default_transformations():

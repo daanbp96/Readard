@@ -3,7 +3,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
-BASE_DIR = Path("/Users/daanbarsukoffponiatowsky/Projects/Readtard")
+_BASE = Path(__file__).resolve().parent.parent
+BASE_DIR = _BASE
 DATA_DIR = BASE_DIR / "data"
 PERSIST_DIR = BASE_DIR / "persist_dir"
 

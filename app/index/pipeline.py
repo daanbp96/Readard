@@ -14,19 +14,22 @@ from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.core.storage.index_store import SimpleIndexStore
 from llama_index.core.vector_stores import SimpleVectorStore
 
+from ..book import ReadingPositionSystem
+
 
 def get_or_create_index(
     documents: Optional[Sequence[Document]],
     persist_path: Path,
     transformations,
+    position_system: ReadingPositionSystem,
     force_reindex: bool = False,
     callback_manager: Optional[CallbackManager] = None,
 ) -> Tuple[VectorStoreIndex, Sequence[BaseNode]]:
     """Load an existing index or create a new one from documents."""
 
-    if _can_load_index(persist_path) and not force_reindex:
+    if not force_reindex and _can_load_index(persist_path):
         index, nodes = _load_index_with_nodes(persist_path)
-        if _nodes_have_global_char_metadata(nodes):
+        if position_system.index_nodes_are_compatible(nodes):
             return index, nodes
 
     if documents is None:
@@ -36,6 +39,7 @@ def get_or_create_index(
         documents=documents,
         persist_path=persist_path,
         transformations=transformations,
+        position_system=position_system,
         callback_manager=callback_manager or Settings.callback_manager,
     )
 
@@ -44,6 +48,7 @@ def _create_index(
     documents: Sequence[Document],
     persist_path: Path,
     transformations,
+    position_system: ReadingPositionSystem,
     callback_manager: CallbackManager,
 ) -> Tuple[VectorStoreIndex, Sequence[BaseNode]]:
     """Transform documents into nodes and build a persistent index."""
@@ -54,6 +59,7 @@ def _create_index(
     nodes = _run_ingestion_pipeline(
         documents=documents,
         transformations=transformations,
+        position_system=position_system,
     )
 
     index = VectorStoreIndex(
@@ -88,11 +94,10 @@ def _get_all_nodes_from_docstore(index: VectorStoreIndex) -> Sequence[BaseNode]:
     """
     Recover all nodes stored in the docstore.
 
-    Works with SimpleDocumentStore-backed persistence.
+    Works with SimpleDocumentStore-backed local persistence.
     """
     docstore = index.storage_context.docstore
 
-    # Common/simple approach for SimpleDocumentStore-backed local persistence
     if hasattr(docstore, "docs"):
         return list(docstore.docs.values())
 
@@ -105,31 +110,13 @@ def _get_all_nodes_from_docstore(index: VectorStoreIndex) -> Sequence[BaseNode]:
 def _run_ingestion_pipeline(
     documents: Sequence[Document],
     transformations,
+    position_system: ReadingPositionSystem,
 ) -> Sequence[BaseNode]:
     pipeline = IngestionPipeline(transformations=transformations)
     nodes = pipeline.run(documents=list(documents))
 
     doc_metadata_by_id = _build_doc_metadata_map(documents)
-
-    for chunk_seq_global, node in enumerate(nodes):
-        node.metadata["chunk_seq_global"] = chunk_seq_global
-
-        source_meta = doc_metadata_by_id.get(getattr(node, "ref_doc_id", ""), {})
-        for key in ("book_id", "book_version", "extraction_version", "spine_idx", "spine_href"):
-            if key in source_meta:
-                node.metadata.setdefault(key, source_meta[key])
-
-        node_start = getattr(node, "start_char_idx", None)
-        node_end = getattr(node, "end_char_idx", None)
-        doc_global_start = source_meta.get("global_char_start")
-        if isinstance(doc_global_start, int):
-            if isinstance(node_start, int):
-                node.metadata["global_char_start"] = doc_global_start + node_start
-            if isinstance(node_end, int):
-                node.metadata["global_char_end"] = doc_global_start + node_end
-
-        if isinstance(node_end, int):
-            node.metadata["end_char_idx"] = node_end
+    position_system.enrich_chunk_nodes(nodes, doc_metadata_by_id)
 
     return nodes
 
@@ -142,12 +129,6 @@ def _build_doc_metadata_map(documents: Sequence[Document]) -> dict[str, dict]:
             metadata_map[doc_id] = dict(doc.metadata)
     return metadata_map
 
-
-def _nodes_have_global_char_metadata(nodes: Sequence[BaseNode]) -> bool:
-    for node in nodes:
-        if node.metadata.get("global_char_end") is None:
-            return False
-    return True
 
 def _create_storage_context() -> StorageContext:
     """Create storage context backing the index."""
