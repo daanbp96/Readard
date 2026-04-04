@@ -1,6 +1,7 @@
 [project]
-name = "hackathon-llamaindex-mvp"
+name = "readtard"
 version = "0.1.0"
+description = "Readtard: spoiler-aware EPUB reading companion (LlamaIndex)"
 requires-python = ">=3.11"
 
 dependencies = [
