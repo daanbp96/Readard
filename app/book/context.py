@@ -10,9 +10,8 @@ from typing import Sequence
 
 from llama_index.core.schema import Document
 
-from .contracts import ReaderPosition
-from .position import ResolvedPosition
 from ..config import READER_CONTEXT_CHARS_AFTER, READER_CONTEXT_CHARS_BEFORE
+from .position import ResolvedPosition
 
 
 def narrow_window_from_resolved(
@@ -37,18 +36,14 @@ def narrow_window_from_resolved(
     return ""
 
 
-def reader_passage_for_llm(
+def create_context_for_question(
     documents: Sequence[Document],
-    position: ReaderPosition,
+    position: ResolvedPosition,
 ) -> str:
     """Short passage around the reader position for deictic questions (uses config window size)."""
-
-    resolved = getattr(position, "resolved", None)
-    if not isinstance(resolved, ResolvedPosition):
-        return ""
     return narrow_window_from_resolved(
         documents,
-        resolved,
+        position,
         READER_CONTEXT_CHARS_BEFORE,
         READER_CONTEXT_CHARS_AFTER,
     )

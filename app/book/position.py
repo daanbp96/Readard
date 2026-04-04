@@ -7,9 +7,9 @@ snippet-based position resolution.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
-from typing import Optional, Sequence
+from dataclasses import dataclass
+from typing import Sequence
 
 from llama_index.core.schema import Document
 
@@ -37,14 +37,14 @@ class ResolvedPosition:
 def resolve_position_from_snippet(
     documents: Sequence[Document],
     snippet: str,
-) -> Optional[ResolvedPosition]:
+) -> ResolvedPosition:
     """
     Match a reader snippet against spine-ordered ``doc.text`` strings.
 
-    Returns a position only if there is exactly one match across all documents.
+    Raises ``ValueError`` if the snippet is empty or does not match exactly one location.
     """
     if not snippet:
-        return None
+        raise ValueError("Snippet is empty.")
 
     token_pattern = _snippet_to_pattern(snippet)
 
@@ -59,7 +59,10 @@ def resolve_position_from_snippet(
             candidates.append((spine_idx, last_plain))
 
     if len(candidates) != 1:
-        return None
+        raise ValueError(
+            "Expected exactly one match for the snippet in the book text, "
+            f"found {len(candidates)}."
+        )
 
     spine_idx, last_plain = candidates[0]
     return ResolvedPosition(
@@ -74,5 +77,5 @@ def resolve_position_from_snippet(
 def _snippet_to_pattern(snippet: str) -> str:
     tokens = [re.escape(token) for token in snippet.split(" ") if token]
     if not tokens:
-        return r"$a"  # impossible match
+        raise ValueError("Snippet has no tokens to match.")
     return r"\s+".join(tokens)

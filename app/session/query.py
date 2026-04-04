@@ -25,27 +25,25 @@ def run_query(
     question: str,
     nodes: Sequence[NodeWithScore],
     llm: LLM,
-    *,
-    reader_passage: str | None = None,
+    context: str,
 ) -> str:
     """Synthesize an answer from retrieval hits, optionally with a local reader passage prepended.
 
     When retrieval is empty but ``reader_passage`` is set, answers from the passage only
     via a direct completion (no vector hits).
     """
-    passage_block = ""
-    if reader_passage and reader_passage.strip():
-        passage_block = (
-            "Passage near the reader's current position (for questions about "
-            '"this" scene or who "they" refers to):\n---\n'
-            f"{reader_passage.strip()}\n---\n\n"
-        )
+    passage_block = context.strip()
+    passage_block = (
+        "Passage near the reader's current position (for questions about "
+        '"this" scene or who "they" refers to):\n---\n'
+        f"{context.strip()}\n---\n\n"
+    )
 
     user_block = f"User question (answer without future spoilers):\n{question}"
     spoiler_aware_question = f"{SYSTEM_PROMPT}\n\n{passage_block}{user_block}"
 
     if not nodes:
-        if reader_passage and reader_passage.strip():
+        if context:
             return str(llm.complete(spoiler_aware_question))
         return (
             "I don’t yet know enough based on what you’ve read so far to answer "

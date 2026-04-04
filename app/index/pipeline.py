@@ -14,14 +14,13 @@ from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.core.storage.index_store import SimpleIndexStore
 from llama_index.core.vector_stores import SimpleVectorStore
 
-from ..book import ReadingPositionSystem
+from .enrich import enrich_spine_local_chunk_nodes, spine_local_index_nodes_are_compatible
 
 
 def get_or_create_index(
     documents: Optional[Sequence[Document]],
     persist_path: Path,
     transformations,
-    position_system: ReadingPositionSystem,
     force_reindex: bool = False,
     callback_manager: Optional[CallbackManager] = None,
 ) -> Tuple[VectorStoreIndex, Sequence[BaseNode]]:
@@ -29,7 +28,7 @@ def get_or_create_index(
 
     if not force_reindex and _can_load_index(persist_path):
         index, nodes = _load_index_with_nodes(persist_path)
-        if position_system.index_nodes_are_compatible(nodes):
+        if spine_local_index_nodes_are_compatible(nodes):
             return index, nodes
 
     if documents is None:
@@ -39,7 +38,6 @@ def get_or_create_index(
         documents=documents,
         persist_path=persist_path,
         transformations=transformations,
-        position_system=position_system,
         callback_manager=callback_manager or Settings.callback_manager,
     )
 
@@ -48,7 +46,6 @@ def _create_index(
     documents: Sequence[Document],
     persist_path: Path,
     transformations,
-    position_system: ReadingPositionSystem,
     callback_manager: CallbackManager,
 ) -> Tuple[VectorStoreIndex, Sequence[BaseNode]]:
     """Transform documents into nodes and build a persistent index."""
@@ -59,7 +56,6 @@ def _create_index(
     nodes = _run_ingestion_pipeline(
         documents=documents,
         transformations=transformations,
-        position_system=position_system,
     )
 
     index = VectorStoreIndex(
@@ -110,13 +106,12 @@ def _get_all_nodes_from_docstore(index: VectorStoreIndex) -> Sequence[BaseNode]:
 def _run_ingestion_pipeline(
     documents: Sequence[Document],
     transformations,
-    position_system: ReadingPositionSystem,
 ) -> Sequence[BaseNode]:
     pipeline = IngestionPipeline(transformations=transformations)
     nodes = pipeline.run(documents=list(documents))
 
     doc_metadata_by_id = _build_doc_metadata_map(documents)
-    position_system.enrich_chunk_nodes(nodes, doc_metadata_by_id)
+    enrich_spine_local_chunk_nodes(nodes, doc_metadata_by_id)
 
     return nodes
 
