@@ -1,4 +1,7 @@
 # Document chunking
+from operator import index
+
+
 CHUNK_SIZE = 1024
 CHUNK_OVERLAP = 200
 
@@ -10,4 +13,6 @@ READER_CONTEXT_CHARS_AFTER = 50
 
 # LLM configuration
 LLM_PROVIDER = "openai"
-OPENAI_MODEL = "gpt-3.5-turbo"
+OPENAI_MODEL = "gpt-4.1-mini"
+TEMPERATURE = 0.0
+

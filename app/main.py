@@ -6,7 +6,7 @@ from app.llm import create_llm
 
 BOOK_NAME = "Harry Potter and the Sorcerer's Stone.epub"
 LAST_READ_SENTENCE = "I bet he asked Dumbledore to keep it safe for him"
-QUERY = "what are they talking about? Who is him?"
+QUERY = "what happens in the fourth chapter of the book?"
 
 
 def main() -> None:
