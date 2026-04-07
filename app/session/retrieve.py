@@ -1,7 +1,9 @@
 from uuid import uuid4
 
+from typing import Sequence
+
 from llama_index.core import Settings, VectorStoreIndex
-from llama_index.core.schema import NodeWithScore, TextNode
+from llama_index.core.schema import NodeWithScore, TextNode, BaseNode
 from llama_index.core.vector_stores import (
     MetadataFilter,
     MetadataFilters,
@@ -28,7 +30,7 @@ def _merge_partial_chunk_text(
         metadata={"readtard_role": "partial_chunk"},
     )
     combined = list[NodeWithScore](retrieved) + [NodeWithScore(node=node, score=score)]
-    combined.sort(key=lambda ns: ns.score, reverse=True)
+    combined.sort(key=lambda ns: ns.score, reverse=True) # type: ignore
     return combined[:top_k]
 
 
@@ -70,3 +72,18 @@ def retrieve_allowed_nodes(
             similarity_top_k,
         )
     return filtered_nodes
+
+def _partial_text_in_covering_chunk(
+    nodes: Sequence[BaseNode],
+    spine_idx: int,
+    local_plain_offset: int,
+) -> str:
+    """Substring from chunk start through ``local_plain_offset`` (inclusive) on ``spine_idx``."""
+    for node in nodes:
+        if node.metadata.get("spine_idx") != spine_idx:
+            continue
+        start = getattr(node, "start_char_idx")
+        end = getattr(node, "end_char_idx")
+        if start <= local_plain_offset < end:
+            return node.get_content()[: local_plain_offset - start + 1]
+    return ""

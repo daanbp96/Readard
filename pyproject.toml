@@ -8,10 +8,12 @@ dependencies = [
     "llama-index",
     "python-dotenv",
     "ebooklib",
+    "fastapi",
+    "uvicorn[standard]",
 ]
 
 [project.scripts]
-readtard = "app.main:main"
+readtard = "app.cli:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]

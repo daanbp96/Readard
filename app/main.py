@@ -1,25 +1,33 @@
-from app.config import LLM_PROVIDER, OPENAI_MODEL
-from app.session import ReadingSession
+"""FastAPI application entrypoint."""
+
+from __future__ import annotations
+
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+
+from app.api.routes import router
+from app.config import BOOK_FILENAME, LLM_PROVIDER, OPENAI_MODEL
 from app.environment import DATA_DIR, initialize_environment
 from app.llm import create_llm
+from app.session import ReadingSession
 
 
-BOOK_NAME = "Harry Potter and the Sorcerer's Stone.epub"
-LAST_READ_SENTENCE = "I bet he asked Dumbledore to keep it safe for him"
-QUERY = "what happens in the fourth chapter of the book?"
-
-
-def main() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     initialize_environment()
-
     llm = create_llm(model=OPENAI_MODEL, provider=LLM_PROVIDER)
     session = ReadingSession(llm=llm)
+    book_path = DATA_DIR / BOOK_FILENAME
+    session.load_book(book_path, force_reindex=False)
+    app.state.reading_session = session
+    app.state.ready = True
+    yield
 
-    session.load_book(DATA_DIR / BOOK_NAME, force_reindex=True)
-    session.set_position(LAST_READ_SENTENCE)
 
-    print(session.ask(QUERY))
-
-
-if __name__ == "__main__":
-    main()
+app = FastAPI(
+    title="Readtard API",
+    description="Spoiler-aware reading companion backend.",
+    lifespan=lifespan,
+)
+app.include_router(router)
