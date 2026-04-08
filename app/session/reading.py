@@ -57,6 +57,11 @@ class ReadingSession:
         self.position = resolve_position_from_snippet(self.book.documents, snippet)
         return self.position
 
+    def set_resolved_position(self, position: ResolvedPosition) -> ResolvedPosition:
+        """Set the reader position directly from an external resolver."""
+        self.position = position
+        return self.position
+
     def ask(self, question: str) -> str:
         """Answer a question based on the book up to the current reader position."""
         boundary = reader_boundary_for_resolved(self.position)
