@@ -1,0 +1,17 @@
+{
+    "title": "Harry Potter and the Sorcerer's Stone",
+    "author": "J.K. Rowling",
+    "publisher": "Scholastic",
+    "coverImageFileName": "cover.jpg",
+    "audioFileName": null,
+    "audioFileExtension": null,
+    "ebookFileName": "ebook",
+    "ebookFileExtension": "epub",
+    "badge": "",
+    "durationSeconds": 0,
+    "theme": {
+        "backgroundTopHex": "#1C1C1E",
+        "backgroundBottomHex": "#111113",
+        "coverStripeHex": "#6E6E73"
+    }
+}
