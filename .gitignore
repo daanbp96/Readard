@@ -12,4 +12,7 @@ __pycache__
 .idea
 .vscode
 *.log
-*.bak       
+*.bak    
+__pycache__/
+*.pyc
+readtard.egg-info/   
