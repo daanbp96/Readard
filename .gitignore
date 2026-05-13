@@ -16,3 +16,5 @@ __pycache__
 __pycache__/
 *.pyc
 readtard.egg-info/   
+backend/persist_dir/
+backend/data/books/
